@@ -1,0 +1,37 @@
+version: '3'
+services:
+  app:
+    build: build
+    environment:
+      - TOOLTYPE=tool
+    volumes:
+      - ~:/root
+      - /clip:/clip
+    ports:
+      - 8080:8080
+    working_dir: /root
+    # entrypoint: tail -f /dev/null
+    entrypoint: sleep infinity
+    stop_signal: SIGKILL
+    restart: always
+    # networks:
+    #   - gitea
+    #   - default
+  cron:
+    build: build_cron
+    restart: always
+    volumes:
+      - ~:/root
+      # - ./crontask/cron.daily:/etc/cron.daily:ro
+      # - ./crontask/cron.hourly:/etc/cron.hourly:ro
+      - ./crontask/cron.monthly:/etc/cron.monthly:ro
+      # - ./crontask/cron.weekly:/etc/cron.weekly:ro
+    # working_dir: /root
+    # entrypoint: tail -f /dev/null
+    # command: crond -f -l 8
+    stop_signal: SIGKILL
+
+# networks:
+#   gitea:
+#     external: true
+#     name: gitea
