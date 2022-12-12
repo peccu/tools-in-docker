@@ -102,6 +102,7 @@ RUN cd /usr/local/bin \
         && chmod +x jd
 
 ## CloudFormation related
+# this version is old. fetch on golang layer
 # # install rain
 # # https://github.com/aws-cloudformation/rain
 # ENV VER_rain=v1.2.0
@@ -111,7 +112,16 @@ RUN cd /usr/local/bin \
 #         && rm -rf rain-${VER_rain}_linux-amd64 rain-${VER_rain}_linux-amd64.zip \
 #         && rain --version \
 #         && curl -Lo /usr/share/bash-completion/completions/rain https://github.com/aws-cloudformation/rain/raw/main/docs/bash_completion.sh
-# this version is old. fetch on golang layer
+# but in golang layer need machine power, so back to here with forked repo's binary
+# install rain
+# https://github.com/peccu/rain
+ENV VER_rain=v1.3.0
+RUN curl -LO https://github.com/peccu/rain/releases/download/${VER_rain}/rain-${VER_rain}_linux-amd64.zip \
+        && 7za x rain-${VER_rain}_linux-amd64.zip \
+        && mv rain-${VER_rain}_linux-amd64/rain /usr/local/bin \
+        && rm -rf rain-${VER_rain}_linux-amd64 rain-${VER_rain}_linux-amd64.zip \
+        && rain --version \
+        && curl -Lo /usr/share/bash-completion/completions/rain https://github.com/peccu/rain/raw/${VER_rain}/docs/bash_completion.sh
 
 # install template builder
 # https://github.com/awslabs/aws-cloudformation-template-builder
@@ -145,7 +155,9 @@ FROM golang:latest as go
 # https://stackoverflow.com/a/72742770
 ENV GOPROXY=direct
 RUN go install -v github.com/tokuhirom/git-xlsx-textconv@latest
-RUN go install -v github.com/aws-cloudformation/rain/cmd/rain@main
+# this needs machine power
+# moved to bin layer
+# RUN go install -v github.com/aws-cloudformation/rain/cmd/rain@main
 
 ##################################################
 FROM amazon/aws-cli:latest
@@ -196,7 +208,7 @@ COPY --from=build /usr/local/bin/datamash /usr/local/bin/datamash
 COPY --from=build /usr/local/bin/bash /usr/local/bin/bash
 # copy from golang layer
 COPY --from=go /go/bin/git-xlsx-textconv /usr/local/bin/git-xlsx-textconv
-COPY --from=go /go/bin/rain /usr/local/bin/rain
+# COPY --from=go /go/bin/rain /usr/local/bin/rain
 # copy from bin layer
 COPY --from=bin /usr/local/bin/rg /usr/local/bin/rg
 # delta for git
@@ -210,7 +222,7 @@ COPY --from=bin /usr/local/bin/sk /usr/local/bin/sk
 COPY --from=bin /usr/local/bin/bat /usr/local/bin/bat
 COPY --from=bin /usr/local/bin/fd /usr/local/bin/fd
 COPY --from=bin /usr/local/bin/jless /usr/local/bin/jless
-# COPY --from=bin /usr/local/bin/rain /usr/local/bin/rain
+COPY --from=bin /usr/local/bin/rain /usr/local/bin/rain
 COPY --from=bin /usr/local/bin/cfn-skeleton /usr/local/bin/cfn-skeleton
 COPY --from=bin /usr/local/bin/cfn-format /usr/local/bin/cfn-format
 COPY --from=bin /usr/local/bin/jd /usr/local/bin/jd
