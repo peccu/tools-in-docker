@@ -16,11 +16,14 @@ RUN set -x && cd /tmp \
         && make install
 
 # bash 5.2 for zoxide <Space>+<Tab>
+# with curses option is for readline's "horizontal-scroll off"
+# ref. https://lists.gnu.org/archive/html/bug-readline/2015-11/msg00006.html
 ENV VER_bash=5.2
+RUN yum install -y ncurses-devel
 RUN curl -O http://ftp.gnu.org/gnu/bash/bash-${VER_bash}.tar.gz \
         && tar xf bash-${VER_bash}.tar.gz \
         && cd bash-${VER_bash} \
-        && ./configure \
+        && ./configure --with-curses \
         && make \
         && make install \
         && rm -rf bash-${VER_bash}.tar.gz bash-${VER_bash}
