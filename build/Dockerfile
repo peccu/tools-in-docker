@@ -206,6 +206,9 @@ RUN yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux
 # RUN curl -sS https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | bash
 # moved to bin layer
 
+# install chezmoi
+RUN sh -c "$(curl -fsLS get.chezmoi.io)" -- -b /usr/local/bin
+
 # copy datamash from build layer
 COPY --from=build /usr/local/bin/datamash /usr/local/bin/datamash
 COPY --from=build /usr/local/bin/bash /usr/local/bin/bash
