@@ -206,7 +206,12 @@ RUN yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux
 # RUN curl -sS https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | bash
 # moved to bin layer
 
+# install chezmoi
+RUN sh -c "$(curl -fsLS get.chezmoi.io)" -- -b /usr/local/bin
+
+## other branch's space
 RUN pip3 install ansible
+## other branch's space
 
 # copy datamash from build layer
 COPY --from=build /usr/local/bin/datamash /usr/local/bin/datamash
