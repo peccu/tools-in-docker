@@ -1,9 +1,38 @@
+# based on aws-cli Dockerfile based on AL2
+# https://github.com/aws/aws-cli/blob/v2/docker/Dockerfile
 ##################################################
-FROM amazon/aws-cli:latest as build
+FROM amazonlinux:2023 as awscliinstaller
 ##################################################
 
-RUN yum update -y \
-        && yum install -y make gcc tar gzip p7zip
+RUN dnf update -y \
+  && dnf install -y unzip \
+  && curl -LO "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" \
+  && unzip awscli-exe-linux-x86_64.zip \
+  # The --bin-dir is specified so that we can copy the
+  # entire bin directory from the installer stage into
+  # into /usr/local/bin of the final stage without
+  # accidentally copying over any other executables that
+  # may be present in /usr/local/bin of the installer stage.
+  && ./aws/install --bin-dir /aws-cli-bin/
+
+##################################################
+FROM amazonlinux:2023 as aws-cli
+##################################################
+
+RUN dnf update -y \
+  && dnf install -y less groff \
+  && dnf clean all
+COPY --from=awscliinstaller /usr/local/aws-cli/ /usr/local/aws-cli/
+COPY --from=awscliinstaller /aws-cli-bin/ /usr/local/bin/
+WORKDIR /aws
+ENTRYPOINT ["/usr/local/bin/aws"]
+
+##################################################
+FROM aws-cli as build
+##################################################
+
+RUN dnf update -y \
+        && dnf install -y make gcc tar gzip p7zip
 
 # install datamash
 ENV VER_datamash=1.8
@@ -19,7 +48,7 @@ RUN set -x && cd /tmp \
 # with curses option is for readline's "horizontal-scroll off"
 # ref. https://lists.gnu.org/archive/html/bug-readline/2015-11/msg00006.html
 ENV VER_bash=5.2
-RUN yum install -y ncurses-devel
+RUN dnf install -y ncurses-devel
 RUN curl -O http://ftp.gnu.org/gnu/bash/bash-${VER_bash}.tar.gz \
         && tar xf bash-${VER_bash}.tar.gz \
         && cd bash-${VER_bash} \
@@ -31,7 +60,7 @@ RUN curl -O http://ftp.gnu.org/gnu/bash/bash-${VER_bash}.tar.gz \
 # tmux
 ENV VER_tmux=3.3a
 # ncurses-devel is already installed for bash
-RUN yum install -y libevent-devel ncurses-devel gcc make bison pkg-config
+RUN dnf install -y libevent-devel ncurses-devel gcc make bison pkg-config
 RUN curl -LO https://github.com/tmux/tmux/releases/download/${VER_tmux}/tmux-${VER_tmux}.tar.gz \
         && tar xf tmux-${VER_tmux}.tar.gz \
         && cd tmux-${VER_tmux} \
@@ -78,14 +107,11 @@ RUN curl -LO https://github.com/tmux/tmux/releases/download/${VER_tmux}/tmux-${V
 ## other branch's space
 
 ##################################################
-FROM amazon/aws-cli:latest as bin
+FROM aws-cli as bin
 ##################################################
 
-# epel-release is for nkf p7zip
-RUN amazon-linux-extras enable epel \
-        && yum clean metadata && yum install -y epel-release \
-        && yum update -y \
-        && yum install -y \
+RUN dnf update -y \
+        && dnf install -y \
         tar p7zip gzip xz
 
 # install ripgrep
@@ -243,30 +269,27 @@ RUN go install -v github.com/tokuhirom/git-xlsx-textconv@latest
 ## other branch's space
 
 ##################################################
-FROM amazon/aws-cli:latest as rust
+FROM aws-cli as rust
 ##################################################
 
-RUN yum install -y gcc
+RUN dnf install -y gcc
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
 RUN source /root/.cargo/env \
-    && cargo install the-way
+        && cargo install the-way
 
 ## other branch's space
 ## other branch's space
 
 ##################################################
-FROM amazon/aws-cli:latest
+FROM aws-cli
 ##################################################
 
-# epel-release is for nkf p7zip
-RUN amazon-linux-extras enable epel \
-        && yum clean metadata && yum install -y epel-release \
-        && yum update -y \
-        && yum install -y \
-        which jq git emacs-nox tar nkf rsync p7zip python2-pip \
-        bash-completion bash-completion-extras pv openssl bc nmap \
+RUN dnf update -y \
+        && dnf install -y \
+        which jq git emacs-nox tar nkf rsync p7zip \
+        bash-completion pv openssl bc nmap \
         python3 python3-pip \
-        yum-utils \
+        dnf-utils \
         whois bind-utils iputils procps zsh \
         libevent \
         sudo
@@ -279,7 +302,7 @@ RUN curl -LO https://github.com/harelba/q/releases/download/v${VER_q}/q-text-as-
 
 # install aws cli session manager plugin
 RUN curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_64bit/session-manager-plugin.rpm" -o "session-manager-plugin.rpm" \
-        && yum install -y session-manager-plugin.rpm \
+        && dnf install -y session-manager-plugin.rpm \
         && rm session-manager-plugin.rpm
 
 # install aws sam cli
@@ -293,8 +316,9 @@ RUN curl -LO https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam
 RUN pip3 install azure-cli percol cfn-lint
 
 # install terraform
-RUN yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo \
-        && yum -y install terraform
+RUN dnf install -y dnf-plugins-core \
+        && dnf config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo \
+        && dnf -y install terraform
 
 # zoxide
 # RUN curl -sS https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | bash
